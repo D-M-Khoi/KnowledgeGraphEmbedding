@@ -54,18 +54,17 @@ class KGEModel(nn.Module):
             a=-self.embedding_range.item(), 
             b=self.embedding_range.item()
         )
-        
         if model_name == 'pRotatE':
             self.modulus = nn.Parameter(torch.Tensor([[0.5 * self.embedding_range.item()]]))
         
         #Do not forget to modify this line when you add a new model in the "forward" function
-        if model_name not in ['TransE', 'DistMult', 'ComplEx', 'RotatE', 'pRotatE']:
+        if model_name not in ['TransE', 'DistMult', 'ComplEx', 'RotatE', 'pRotatE', 'RotatEBert', 'ComplExBert', 'DistMultBert']:
             raise ValueError('model %s not supported' % model_name)
             
-        if model_name == 'RotatE' and (not double_entity_embedding or double_relation_embedding):
+        if model_name in ['RotatE', 'RotatEBert'] and (not double_entity_embedding or double_relation_embedding):
             raise ValueError('RotatE should use --double_entity_embedding')
 
-        if model_name == 'ComplEx' and (not double_entity_embedding or not double_relation_embedding):
+        if model_name in ['ComplEx', 'ComplExBert'] and (not double_entity_embedding or not double_relation_embedding):
             raise ValueError('ComplEx should use --double_entity_embedding and --double_relation_embedding')
         
     def forward(self, sample, mode='single'):
@@ -99,11 +98,23 @@ class KGEModel(nn.Module):
                 dim=0, 
                 index=sample[:,2]
             ).unsqueeze(1)
+
+            bert_head = torch.index_select(
+                self.entity_embedding, 
+                dim=0, 
+                index=sample[:,3]
+            ).unsqueeze(1)
+
+            bert_tail = torch.index_select(
+                self.entity_embedding, 
+                dim=0, 
+                index=sample[:,4]
+            ).unsqueeze(1)
             
         elif mode == 'head-batch':
             tail_part, head_part = sample
             batch_size, negative_sample_size = head_part.size(0), head_part.size(1)
-            
+
             head = torch.index_select(
                 self.entity_embedding, 
                 dim=0, 
@@ -121,11 +132,22 @@ class KGEModel(nn.Module):
                 dim=0, 
                 index=tail_part[:, 2]
             ).unsqueeze(1)
+
+            bert_head = torch.index_select(
+                self.entity_embedding, 
+                dim=0, 
+                index=tail_part[:,3]
+            ).unsqueeze(1)
+
+            bert_tail = torch.index_select(
+                self.entity_embedding, 
+                dim=0, 
+                index=tail_part[:,4]
+            ).unsqueeze(1)
             
         elif mode == 'tail-batch':
             head_part, tail_part = sample
             batch_size, negative_sample_size = tail_part.size(0), tail_part.size(1)
-            
             head = torch.index_select(
                 self.entity_embedding, 
                 dim=0, 
@@ -143,6 +165,18 @@ class KGEModel(nn.Module):
                 dim=0, 
                 index=tail_part.view(-1)
             ).view(batch_size, negative_sample_size, -1)
+
+            bert_head = torch.index_select(
+                self.entity_embedding, 
+                dim=0, 
+                index=head_part[:,4]
+            ).unsqueeze(1)
+
+            bert_tail = torch.index_select(
+                self.entity_embedding, 
+                dim=0, 
+                index=head_part[:,3]
+            ).unsqueeze(1)
             
         else:
             raise ValueError('mode %s not supported' % mode)
@@ -152,35 +186,65 @@ class KGEModel(nn.Module):
             'DistMult': self.DistMult,
             'ComplEx': self.ComplEx,
             'RotatE': self.RotatE,
-            'pRotatE': self.pRotatE
+            'pRotatE': self.pRotatE,
+            'RotatEBert': self.RotatEBert,
+            'ComplExBert': self.ComplExBert,
+            'DistMultBert': self.DistMultBert
         }
         
         if self.model_name in model_func:
-            score = model_func[self.model_name](head, relation, tail, mode)
+            score = model_func[self.model_name](head, relation, tail, bert_head, bert_tail, mode)
         else:
             raise ValueError('model %s not supported' % self.model_name)
         
         return score
     
-    def TransE(self, head, relation, tail, mode):
+    # def TransE(self, head, relation, tail, mode):
+    #     if mode == 'head-batch':
+    #         score = head + (relation - tail)
+    #     else:
+    #         score = (head + relation) - tail
+
+    #     score = self.gamma.item() - torch.norm(score, p=1, dim=2)
+    #     return score
+
+    def TransE(self, head, relation, tail, bert_head, bert_tail, mode):
         if mode == 'head-batch':
-            score = head + (relation - tail)
+            score = head + ((relation - tail) + bert_head)/2
         else:
-            score = (head + relation) - tail
+            score = ((head + relation) + bert_tail)/2 - tail
 
         score = self.gamma.item() - torch.norm(score, p=1, dim=2)
         return score
 
-    def DistMult(self, head, relation, tail, mode):
+    def DistMultBert(self, head, relation, tail, bert_head, bert_tail, mode):
+        cp_bert_head = bert_head.detach().clone()
+        cp_bert_tail = bert_tail.detach().clone()
         if mode == 'head-batch':
             score = head * (relation * tail)
+            bert_score = cp_bert_head * (relation * tail)
+
+        else:
+            score = (head * relation) * tail
+            bert_score = (head * relation) * cp_bert_tail
+
+
+        score = score.sum(dim = 2)
+        bert_score = bert_score.sum(dim = 2)
+        score = (score*0.8 + bert_score*0.2)/2
+        return score
+    
+    def DistMult(self, head, relation, tail, bert_head, bert_tail, mode):
+        if mode == 'head-batch':
+            score = head * (relation * tail)
+
         else:
             score = (head * relation) * tail
 
         score = score.sum(dim = 2)
         return score
 
-    def ComplEx(self, head, relation, tail, mode):
+    def ComplEx(self, head, relation, tail, bert_head, bert_tail, mode):
         re_head, im_head = torch.chunk(head, 2, dim=2)
         re_relation, im_relation = torch.chunk(relation, 2, dim=2)
         re_tail, im_tail = torch.chunk(tail, 2, dim=2)
@@ -196,12 +260,48 @@ class KGEModel(nn.Module):
 
         score = score.sum(dim = 2)
         return score
+    
+    def ComplExBert(self, head, relation, tail, bert_head, bert_tail, mode):
+        re_head, im_head = torch.chunk(head, 2, dim=2)
+        re_tail, im_tail = torch.chunk(tail, 2, dim=2)
+        re_relation, im_relation = torch.chunk(relation, 2, dim=2)
 
-    def RotatE(self, head, relation, tail, mode):
+
+        if mode == 'head-batch':
+            re_score = re_relation * re_tail + im_relation * im_tail
+            im_score = re_relation * im_tail - im_relation * re_tail
+            score = re_head * re_score + im_head * im_score
+        else:
+            re_score = re_head * re_relation - im_head * im_relation
+            im_score = re_head * im_relation + im_head * re_relation
+            score = re_score * re_tail + im_score * im_tail
+
+        score = score.sum(dim = 2)
+        
+
+        if mode == 'head-batch':
+            re_head, im_head = torch.chunk(bert_head, 2, dim=2)
+            re_score = re_relation * re_tail + im_relation * im_tail
+            im_score = re_relation * im_tail - im_relation * re_tail
+            bert_score = re_head * re_score + im_head * im_score
+        else:
+            re_tail, im_tail = torch.chunk(bert_tail, 2, dim=2)
+            re_score = re_head * re_relation - im_head * im_relation
+            im_score = re_head * im_relation + im_head * re_relation
+            bert_score = re_score * re_tail + im_score * im_tail
+
+        bert_score = bert_score.sum(dim = 2)
+
+        score = (score*0.8 + bert_score*0.2)/2
+        return score
+
+    def RotatE(self, head, relation, tail, bert_head, bert_tail, mode):
+
         pi = 3.14159265358979323846
         
         re_head, im_head = torch.chunk(head, 2, dim=2)
         re_tail, im_tail = torch.chunk(tail, 2, dim=2)
+        
 
         #Make phases of relations uniformly distributed in [-pi, pi]
 
@@ -224,6 +324,55 @@ class KGEModel(nn.Module):
         score = torch.stack([re_score, im_score], dim = 0)
         score = score.norm(dim = 0)
 
+        score = self.gamma.item() - score.sum(dim = 2)
+        return score
+
+    def RotatEBert(self, head, relation, tail, bert_head, bert_tail, mode):
+        pi = 3.14159265358979323846
+        
+        re_head, im_head = torch.chunk(head, 2, dim=2)
+        re_tail, im_tail = torch.chunk(tail, 2, dim=2)
+        
+
+        #Make phases of relations uniformly distributed in [-pi, pi]
+
+        phase_relation = relation/(self.embedding_range.item()/pi)
+
+        re_relation = torch.cos(phase_relation)
+        im_relation = torch.sin(phase_relation)
+
+        if mode == 'head-batch':
+            re_score = re_relation * re_tail + im_relation * im_tail
+            im_score = re_relation * im_tail - im_relation * re_tail
+            re_score = re_score - re_head
+            im_score = im_score - im_head
+        else:
+            re_score = re_head * re_relation - im_head * im_relation
+            im_score = re_head * im_relation + im_head * re_relation
+            re_score = re_score - re_tail
+            im_score = im_score - im_tail
+
+        score = torch.stack([re_score, im_score], dim = 0)
+        score = score.norm(dim = 0)
+
+
+        if mode == 'head-batch':
+            re_head, im_head = torch.chunk(bert_head, 2, dim=2)
+            re_score = re_relation * re_tail + im_relation * im_tail
+            im_score = re_relation * im_tail - im_relation * re_tail
+            re_score = re_score - re_head
+            im_score = im_score - im_head
+        else:
+            re_tail, im_tail = torch.chunk(bert_tail, 2, dim=2)
+            re_score = re_head * re_relation - im_head * im_relation
+            im_score = re_head * im_relation + im_head * re_relation
+            re_score = re_score - re_tail
+            im_score = im_score - im_tail
+
+        bert_score = torch.stack([re_score, im_score], dim = 0)
+        bert_score = bert_score.norm(dim = 0)
+
+        score = (0.8*score + 0.2*bert_score)/2
         score = self.gamma.item() - score.sum(dim = 2)
         return score
 
@@ -272,6 +421,7 @@ class KGEModel(nn.Module):
                               * F.logsigmoid(-negative_score)).sum(dim = 1)
         else:
             negative_score = F.logsigmoid(-negative_score).mean(dim = 1)
+
 
         positive_score = model(positive_sample)
 

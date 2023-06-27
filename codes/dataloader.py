@@ -27,7 +27,7 @@ class TrainDataset(Dataset):
     def __getitem__(self, idx):
         positive_sample = self.triples[idx]
 
-        head, relation, tail = positive_sample
+        head, relation, tail, _, _ = positive_sample
 
         subsampling_weight = self.count[(head, relation)] + self.count[(tail, -relation-1)]
         subsampling_weight = torch.sqrt(1 / torch.Tensor([subsampling_weight]))
@@ -62,7 +62,7 @@ class TrainDataset(Dataset):
         negative_sample = torch.LongTensor(negative_sample)
 
         positive_sample = torch.LongTensor(positive_sample)
-            
+        
         return positive_sample, negative_sample, subsampling_weight, self.mode
     
     @staticmethod
@@ -80,7 +80,7 @@ class TrainDataset(Dataset):
         The frequency will be used for subsampling like word2vec
         '''
         count = {}
-        for head, relation, tail in triples:
+        for head, relation, tail, _, _ in triples:
             if (head, relation) not in count:
                 count[(head, relation)] = start
             else:
@@ -102,7 +102,7 @@ class TrainDataset(Dataset):
         true_head = {}
         true_tail = {}
 
-        for head, relation, tail in triples:
+        for head, relation, tail, _, _ in triples:
             if (head, relation) not in true_tail:
                 true_tail[(head, relation)] = []
             true_tail[(head, relation)].append(tail)
@@ -131,14 +131,14 @@ class TestDataset(Dataset):
         return self.len
     
     def __getitem__(self, idx):
-        head, relation, tail = self.triples[idx]
+        head, relation, tail, bert_head, bert_tail = self.triples[idx]
 
         if self.mode == 'head-batch':
-            tmp = [(0, rand_head) if (rand_head, relation, tail) not in self.triple_set
+            tmp = [(0, rand_head) if (rand_head, relation, tail, bert_head, bert_tail) not in self.triple_set
                    else (-1, head) for rand_head in range(self.nentity)]
             tmp[head] = (0, head)
         elif self.mode == 'tail-batch':
-            tmp = [(0, rand_tail) if (head, relation, rand_tail) not in self.triple_set
+            tmp = [(0, rand_tail) if (head, relation, rand_tail, bert_head, bert_tail) not in self.triple_set
                    else (-1, tail) for rand_tail in range(self.nentity)]
             tmp[tail] = (0, tail)
         else:
@@ -148,7 +148,7 @@ class TestDataset(Dataset):
         filter_bias = tmp[:, 0].float()
         negative_sample = tmp[:, 1]
 
-        positive_sample = torch.LongTensor((head, relation, tail))
+        positive_sample = torch.LongTensor((head, relation, tail, bert_head, bert_tail))
             
         return positive_sample, negative_sample, filter_bias, self.mode
     

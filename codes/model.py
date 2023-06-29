@@ -398,8 +398,8 @@ class KGEModel(nn.Module):
             re_score = re_score - re_tail
             im_score = im_score - im_tail
 
-            re_score = re_head * re_relation - im_head * im_relation
-            im_score = re_head * im_relation + im_head * re_relation
+            bert_re_score = re_head * re_relation - im_head * im_relation
+            bert_im_score = re_head * im_relation + im_head * re_relation
             bert_re_score = bert_re_score - bert_re_tail
             bert_im_score = bert_re_score - bert_im_tail
             

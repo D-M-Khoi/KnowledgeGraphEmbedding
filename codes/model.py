@@ -217,22 +217,22 @@ class KGEModel(nn.Module):
         score = self.gamma.item() - torch.norm(score, p=1, dim=2)
         return score
 
-    # def DistMultBert(self, head, relation, tail, bert_head, bert_tail, mode):
-    #     cp_bert_head = bert_head.detach().clone()
-    #     cp_bert_tail = bert_tail.detach().clone()
-    #     if mode == 'head-batch':
-    #         score = head * (relation * tail)
-    #         bert_score = cp_bert_head * (relation * tail)
+    def DistMultBert(self, head, relation, tail, bert_head, bert_tail, mode):
+        cp_bert_head = bert_head.detach().clone()
+        cp_bert_tail = bert_tail.detach().clone()
+        if mode == 'head-batch':
+            score = head * (relation * tail)
+            bert_score = cp_bert_head * (relation * tail)
 
-    #     else:
-    #         score = (head * relation) * tail
-    #         bert_score = (head * relation) * cp_bert_tail
+        else:
+            score = (head * relation) * tail
+            bert_score = (head * relation) * cp_bert_tail
 
 
-    #     score = score.sum(dim = 2)
-    #     bert_score = bert_score.sum(dim = 2)
-    #     score = (score*0.8 + bert_score*0.2)/2
-    #     return score
+        score = score.sum(dim = 2)
+        bert_score = bert_score.sum(dim = 2)
+        score = (score*0.8 + bert_score*0.2)/2
+        return score
     
     # def DistMultBert(self, head, relation, tail, bert_head, bert_tail, mode):
     #     cp_bert_head = bert_head.detach().clone()
@@ -254,22 +254,22 @@ class KGEModel(nn.Module):
     #     score = (score*(ratio) + bert_score*(1 - ratio))/2
     #     return score
     
-    def DistMultBert(self, head, relation, tail, bert_head, bert_tail, mode):
-        if mode == 'head-batch':
-            score = head * (relation * tail)
-            bert_score = bert_head * (relation * tail)
-            ratio = (F.cosine_similarity(head, bert_head, dim=2) + 1)/2
+    # def DistMultBert(self, head, relation, tail, bert_head, bert_tail, mode):
+    #     if mode == 'head-batch':
+    #         score = head * (relation * tail)
+    #         bert_score = bert_head * (relation * tail)
+    #         ratio = (F.cosine_similarity(head, bert_head, dim=2) + 1)/2
 
-        else:
-            score = (head * relation) * tail
-            bert_score = (head * relation) * bert_tail
-            ratio = (F.cosine_similarity(tail, bert_tail, dim=2) + 1)/2
+    #     else:
+    #         score = (head * relation) * tail
+    #         bert_score = (head * relation) * bert_tail
+    #         ratio = (F.cosine_similarity(tail, bert_tail, dim=2) + 1)/2
 
 
-        score = score.sum(dim = 2)
-        bert_score = bert_score.sum(dim = 2)
-        score = (score*(ratio) + bert_score*(1 - ratio))/2
-        return score
+    #     score = score.sum(dim = 2)
+    #     bert_score = bert_score.sum(dim = 2)
+    #     score = (score*(ratio) + bert_score*(1 - ratio))/2
+    #     return score
 
 
     def DistMult(self, head, relation, tail, bert_head, bert_tail, mode):
@@ -398,24 +398,16 @@ class KGEModel(nn.Module):
             re_score = re_score - re_tail
             im_score = im_score - im_tail
 
+            re_score = re_head * re_relation - im_head * im_relation
+            im_score = re_head * im_relation + im_head * re_relation
+            bert_re_score = bert_re_score - bert_re_tail
+            bert_im_score = bert_re_score - bert_im_tail
+            
+
         score = torch.stack([re_score, im_score], dim = 0)
         score = score.norm(dim = 0)
 
-
-        if mode == 'head-batch':
-            re_head, im_head = torch.chunk(bert_head, 2, dim=2)
-            re_score = re_relation * re_tail + im_relation * im_tail
-            im_score = re_relation * im_tail - im_relation * re_tail
-            re_score = re_score - re_head
-            im_score = im_score - im_head
-        else:
-            re_tail, im_tail = torch.chunk(bert_tail, 2, dim=2)
-            re_score = re_head * re_relation - im_head * im_relation
-            im_score = re_head * im_relation + im_head * re_relation
-            re_score = re_score - re_tail
-            im_score = im_score - im_tail
-
-        bert_score = torch.stack([re_score, im_score], dim = 0)
+        bert_score = torch.stack([bert_re_score, bert_im_score], dim = 0)
         bert_score = bert_score.norm(dim = 0)
 
         score = (0.8*score + 0.2*bert_score)/2

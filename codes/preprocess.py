@@ -374,4 +374,8 @@ if __name__ == '__main__':
     # else:
         # raise OSError('Unsupported architecture')
     # mp.set_start_method('spawn')
+    print(args.train_path)
+    print(args.test_path)
+    print(args.valid_path)
+
     main()

@@ -369,7 +369,7 @@ if __name__ == '__main__':
     # else:
         # raise OSError('Unsupported architecture')
     try:
-        mp.set_start_method('spawn')
+        mp.set_start_method('spawn', force=True)
     except RuntimeError:
         pass
     print(args.train_path)

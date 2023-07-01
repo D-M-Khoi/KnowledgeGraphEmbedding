@@ -188,11 +188,6 @@ def preprocess_fb15k237(path):
         _load_fb15k237_wikidata('{}/FB15k_mid2name.txt'.format(os.path.dirname(path)))
 
     lines = open(path, 'r', encoding='utf-8').readlines()
-    pool = Pool(processes=args.workers)
-    examples = pool.map(_process_line_fb15k237, lines)
-    pool.close()
-    pool.join()
-
     examples = []
     for line in lines:
         examples.append(_process_line_fb15k237(line))

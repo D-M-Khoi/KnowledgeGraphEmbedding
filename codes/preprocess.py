@@ -68,9 +68,9 @@ def _normalize_relations(examples: List[dict], normalize_fn, is_train: bool):
 
 wn18rr_id2ent = {}
 
-def init_wn18rr_workers(wn18rr_id2ent_shared):
+def init_workers(id2ent_shared):
     global id2ent
-    id2ent = wn18rr_id2ent_shared
+    id2ent = id2ent_shared
 
 
 def _load_wn18rr_texts(path: str):
@@ -110,8 +110,8 @@ def preprocess_wn18rr(path):
     for line in lines:
         examples.append(_process_line_wn18rr(line))
 
-    pool = Pool(processes=args.workers, initializer=init_wn18rr_workers, initargs=((wn18rr_id2ent, )))
-    examples = pool.map(wn18rr_candidate_pred, examples)
+    pool = Pool(processes=args.workers, initializer=init_workers, initargs=((wn18rr_id2ent, )))
+    examples = pool.map(predict_candidate, examples)
     pool.close()
     pool.join()
 
@@ -190,6 +190,15 @@ def preprocess_fb15k237(path):
     lines = open(path, 'r', encoding='utf-8').readlines()
     pool = Pool(processes=args.workers)
     examples = pool.map(_process_line_fb15k237, lines)
+    pool.close()
+    pool.join()
+
+    examples = []
+    for line in lines:
+        examples.append(_process_line_fb15k237(line))
+
+    pool = Pool(processes=args.workers, initializer=init_workers, initargs=((wn18rr_id2ent, )))
+    examples = pool.map(predict_candidate, examples)
     pool.close()
     pool.join()
 
@@ -341,35 +350,11 @@ def main():
                       id2text=id2text)
     print('Done')
 
-# def wn18rr_candidate_pred(all_examples):
-#     global id2ent
-#     examples = deepcopy(all_examples)
-#     all_ents = [i[1] for i in wn18rr_id2ent.values()]
-#     ent2id = {i[1]: i[0] for i in wn18rr_id2ent.values()}
-#     print('Number of examples: {}'.format(len(examples)))
-#     # print(wn18rr_id2ent)
-#     for i, example in enumerate(examples):
-#         print('Examples no {}'.format(i))
-#         print(example)
-#         masked_string = example['head'] + ' ' + id2ent[example['head_id']][2] + ' ' + example['relation'] + ' ' + '***mask***'
-#         t_candidates = FB.rank(masked_string, options=all_ents)
-#         masked_string = '***mask***' + ' ' + example['relation'] + example['tail'] + ' ' + id2ent[example['tail_id']][2]
-#         h_candidates = FB.rank(masked_string, options=all_ents)
-#         t = examples[i] 
-#         t['bert_t_id'] = ent2id[t_candidates[0]]
-#         t['bert_h_id'] = ent2id[h_candidates[0]]
-#         examples[i] = t
-#         print(examples[i])
-#     return examples
 
-# all_ents = [i[1] for i in wn18rr_id2ent.values()]
-# ent2id = {i[1]: i[0] for i in wn18rr_id2ent.values()}
-
-def wn18rr_candidate_pred(example):
+def predict_candidate(example):
     global id2ent
     all_ents = [i[1] for i in id2ent.values()]
     ent2id = {i[1]: i[0] for i in id2ent.values()}
-    # print(wn18rr_id2ent)
     masked_string = example['head'] + ' ' + id2ent[example['head_id']][2] + ' ' + example['relation'] + ' ' + '***mask***'
     t_candidates = FB.rank(masked_string, options=all_ents)
     masked_string = '***mask***' + ' ' + example['relation'] + example['tail'] + ' ' + id2ent[example['tail_id']][2]

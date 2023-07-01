@@ -368,7 +368,10 @@ if __name__ == '__main__':
         # mp.set_start_method('fork')
     # else:
         # raise OSError('Unsupported architecture')
-    mp.set_start_method('spawn')
+    try:
+        mp.set_start_method('spawn')
+    except RuntimeError:
+        pass
     print(args.train_path)
     print(args.test_path)
     print(args.valid_path)

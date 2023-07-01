@@ -197,7 +197,7 @@ def preprocess_fb15k237(path):
     for line in lines:
         examples.append(_process_line_fb15k237(line))
 
-    pool = Pool(processes=args.workers, initializer=init_workers, initargs=((wn18rr_id2ent, )))
+    pool = Pool(processes=args.workers, initializer=init_workers, initargs=((fb15k_id2ent, )))
     examples = pool.map(predict_candidate, examples)
     pool.close()
     pool.join()

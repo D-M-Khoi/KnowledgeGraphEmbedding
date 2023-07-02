@@ -199,23 +199,30 @@ class KGEModel(nn.Module):
         
         return score
     
-    # def TransE(self, head, relation, tail, mode):
-    #     if mode == 'head-batch':
-    #         score = head + (relation - tail)
-    #     else:
-    #         score = (head + relation) - tail
-
-    #     score = self.gamma.item() - torch.norm(score, p=1, dim=2)
-    #     return score
-
-    def TransE(self, head, relation, tail, bert_head, bert_tail, mode):
+    def TransE(self, head, relation, tail, mode):
         if mode == 'head-batch':
-            score = head + ((relation - tail) + bert_head)/2
+            score = head + (relation - tail)
         else:
-            score = ((head + relation) + bert_tail)/2 - tail
+            score = (head + relation) - tail
 
         score = self.gamma.item() - torch.norm(score, p=1, dim=2)
         return score
+
+    def TransEBert(self, head, relation, tail, bert_head, bert_tail, mode):
+        cp_bert_head = bert_head.detach().clone()
+        cp_bert_tail = bert_tail.detach().clone()
+        if mode == 'head-batch':
+            score = head + (relation - tail)
+            bert_score = cp_bert_head + (relation - tail)
+        else:
+            score = (head + relation) - tail
+            bert_score = (head + relation) - cp_bert_tail
+
+        score = self.gamma.item() - torch.norm(score, p=1, dim=2)
+        bert_score = self.gamma.item() - torch.norm(bert_score, p=1, dim=2)
+        score = (score*0.8 + bert_score*0.2)/2
+        return score
+
 
     def DistMultBert(self, head, relation, tail, bert_head, bert_tail, mode):
         cp_bert_head = bert_head.detach().clone()
@@ -233,43 +240,6 @@ class KGEModel(nn.Module):
         bert_score = bert_score.sum(dim = 2)
         score = (score*0.8 + bert_score*0.2)/2
         return score
-    
-    # def DistMultBert(self, head, relation, tail, bert_head, bert_tail, mode):
-    #     cp_bert_head = bert_head.detach().clone()
-    #     cp_bert_tail = bert_tail.detach().clone()
-        
-    #     if mode == 'head-batch':
-    #         score = head * (relation * tail)
-    #         bert_score = cp_bert_head * (relation * tail)
-    #         ratio = (F.cosine_similarity(head, cp_bert_head, dim=2) + 1)/2
-
-    #     else:
-    #         score = (head * relation) * tail
-    #         bert_score = (head * relation) * cp_bert_tail
-    #         ratio = (F.cosine_similarity(tail, cp_bert_tail, dim=2) + 1)/2
-
-
-    #     score = score.sum(dim = 2)
-    #     bert_score = bert_score.sum(dim = 2)
-    #     score = (score*(ratio) + bert_score*(1 - ratio))/2
-    #     return score
-    
-    # def DistMultBert(self, head, relation, tail, bert_head, bert_tail, mode):
-    #     if mode == 'head-batch':
-    #         score = head * (relation * tail)
-    #         bert_score = bert_head * (relation * tail)
-    #         ratio = (F.cosine_similarity(head, bert_head, dim=2) + 1)/2
-
-    #     else:
-    #         score = (head * relation) * tail
-    #         bert_score = (head * relation) * bert_tail
-    #         ratio = (F.cosine_similarity(tail, bert_tail, dim=2) + 1)/2
-
-
-    #     score = score.sum(dim = 2)
-    #     bert_score = bert_score.sum(dim = 2)
-    #     score = (score*(ratio) + bert_score*(1 - ratio))/2
-    #     return score
 
 
     def DistMult(self, head, relation, tail, bert_head, bert_tail, mode):

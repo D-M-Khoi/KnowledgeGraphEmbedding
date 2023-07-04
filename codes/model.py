@@ -59,7 +59,7 @@ class KGEModel(nn.Module):
         
         #Do not forget to modify this line when you add a new model in the "forward" function
         if model_name not in ['TransE', 'DistMult', 'ComplEx', 'RotatE', 'pRotatE', 
-                              'RotatEBert', 'ComplExBert', 'DistMultBert', 'TransEBert']:
+                              'RotatEBert', 'ComplExBert', 'DistMultBert', 'TransEBert', 'pRotatEBert']:
             raise ValueError('model %s not supported' % model_name)
             
         if model_name in ['RotatE', 'RotatEBert'] and (not double_entity_embedding or double_relation_embedding):
@@ -191,7 +191,8 @@ class KGEModel(nn.Module):
             'RotatEBert': self.RotatEBert,
             'ComplExBert': self.ComplExBert,
             'DistMultBert': self.DistMultBert,
-            'TransEBert': self.TransEBert
+            'TransEBert': self.TransEBert,
+            'pRotatEBert': self.pRotatEBert
         }
         
         if self.model_name in model_func:
@@ -209,6 +210,7 @@ class KGEModel(nn.Module):
 
         score = self.gamma.item() - torch.norm(score, p=1, dim=2)
         return score
+
 
     def TransEBert(self, head, relation, tail, bert_head, bert_tail, mode):
         cp_bert_head = bert_head.detach().clone()
@@ -425,6 +427,35 @@ class KGEModel(nn.Module):
         score = self.gamma.item() - score.sum(dim = 2) * self.modulus
         return score
     
+
+    def pRotatEBert(self, head, relation, tail, bert_head, bert_tail, mode):
+        pi = 3.14159262358979323846
+        
+        #Make phases of entities and relations uniformly distributed in [-pi, pi]
+
+        phase_head = head/(self.embedding_range.item()/pi)
+        phase_relation = relation/(self.embedding_range.item()/pi)
+        phase_tail = tail/(self.embedding_range.item()/pi)
+
+        phase_bert_head = bert_head/(self.embedding_range.item()/pi)
+        phase_bert_tail = bert_tail/(self.embedding_range.item()/pi)
+
+        if mode == 'head-batch':
+            score = phase_head + (phase_relation - phase_tail)
+            bert_score = phase_bert_head + (phase_relation - phase_tail)
+            score = (score + bert_score)/2
+        else:
+            score = (phase_head + phase_relation) - phase_tail
+            bert_score = (phase_head + phase_relation) - phase_bert_tail
+            score = (score + bert_score)/2
+
+        score = torch.sin(score)            
+        score = torch.abs(score)
+
+        score = self.gamma.item() - score.sum(dim = 2) * self.modulus
+        return score
+    
+
     @staticmethod
     def train_step(model, optimizer, train_iterator, args):
         '''

@@ -238,7 +238,7 @@ class KGEModel(nn.Module):
 
         score = self.gamma.item() - torch.norm(score, p=1, dim=2)
         # bert_score = self.gamma.item() - torch.norm(bert_score, p=1, dim=2)
-        score = (score*0.8 + bert_score*0.2)/2
+        # score = (score*0.8 + bert_score*0.2)/2
         return score
 
 

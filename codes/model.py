@@ -225,15 +225,15 @@ class KGEModel(nn.Module):
     
     
     def TransEBert(self, head, relation, tail, bert_head, bert_tail, mode):
-        # cp_bert_head = bert_head.detach().clone()
-        # cp_bert_tail = bert_tail.detach().clone()
-        # cp_bert_head.require_grads = False
-        # cp_bert_tail.require_grads = False
+        cp_bert_head = bert_head.detach().clone()
+        cp_bert_tail = bert_tail.detach().clone()
+        cp_bert_head.require_grads = False
+        cp_bert_tail.require_grads = False
 
         if mode == 'head-batch':
-            score = head + ((relation - tail) + bert_head)/2
+            score = head + ((relation - tail) + cp_bert_head)/2
         else:
-            score = ((head + relation) + bert_tail)/2 - tail
+            score = ((head + relation) + cp_bert_tail)/2 - tail
             # bert_score = (head + relation) - bert_tail
 
         score = self.gamma.item() - torch.norm(score, p=1, dim=2)

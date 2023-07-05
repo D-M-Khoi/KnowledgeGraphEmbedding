@@ -357,15 +357,16 @@ class KGEModel(nn.Module):
 
         score = self.gamma.item() - score.sum(dim = 2)
         return score
+    
 
     def RotatEBert(self, head, relation, tail, bert_head, bert_tail, mode):
+
         pi = 3.14159265358979323846
         
         re_head, im_head = torch.chunk(head, 2, dim=2)
         re_tail, im_tail = torch.chunk(tail, 2, dim=2)
-        cp_bert_head, cp_bert_tail = bert_head.detach().clone(), bert_tail.detach().clone()
-        bert_re_head, bert_im_head = torch.chunk(cp_bert_head, 2, dim=2)
-        bert_re_tail, bert_im_tail = torch.chunk(cp_bert_tail, 2, dim=2)
+        re_bhead, im_bhead = torch.chunk(bert_head, 2, dim=2)
+        re_btail, im_btail = torch.chunk(bert_tail, 2, dim=2)
         
 
         #Make phases of relations uniformly distributed in [-pi, pi]
@@ -376,25 +377,66 @@ class KGEModel(nn.Module):
         im_relation = torch.sin(phase_relation)
 
         if mode == 'head-batch':
-            re_score = re_relation * re_tail + im_relation * im_tail
-            im_score = re_relation * im_tail - im_relation * re_tail
+            re_new_head = re_relation * re_tail + im_relation * im_tail
+            im_new_head = re_relation * im_tail - im_relation * re_tail
+            re_score = re_new_tail * re_bhead + im_score * im_bhead
+            im_score = re_new_head * im_bhead - im_new_head * re_bhead
             re_score = re_score - re_head
             im_score = im_score - im_head
-
-            bert_re_score = re_relation * re_tail + im_relation * im_tail
-            bert_im_score = re_relation * im_tail - im_relation * re_tail
-            bert_re_score = bert_re_score - bert_re_head
-            bert_im_score = bert_im_score - bert_im_head
         else:
-            re_score = re_head * re_relation - im_head * im_relation
-            im_score = re_head * im_relation + im_head * re_relation
+            re_new_tail = re_head * re_relation - im_head * im_relation
+            im_new_tail = re_head * im_relation + im_head * re_relation
+            re_score = re_new_tail * re_btail + im_score * im_btail
+            im_score = re_new_tail * im_btail - im_new_tail * re_btail
             re_score = re_score - re_tail
             im_score = im_score - im_tail
 
-            bert_re_score = re_head * re_relation - im_head * im_relation
-            bert_im_score = re_head * im_relation + im_head * re_relation
-            bert_re_score = bert_re_score - bert_re_tail
-            bert_im_score = bert_re_score - bert_im_tail
+        score = torch.stack([re_score, im_score], dim = 0)
+        score = score.norm(dim = 0)
+
+        score = self.gamma.item() - score.sum(dim = 2)
+        return score
+
+    # def RotatEBert(self, head, relation, tail, bert_head, bert_tail, mode):
+    #     pi = 3.14159265358979323846
+        
+    #     re_head, im_head = torch.chunk(head, 2, dim=2)
+    #     re_tail, im_tail = torch.chunk(tail, 2, dim=2)
+    #     cp_bert_head = bert_head.detach().clone()
+    #     cp_bert_tail = bert_tail.detach().clone()
+    #     cp_bert_head.require_grads=False
+    #     cp_bert_tail.require_grads=False
+    #     bert_re_head, bert_im_head = torch.chunk(cp_bert_head, 2, dim=2)
+    #     bert_re_tail, bert_im_tail = torch.chunk(cp_bert_tail, 2, dim=2)
+        
+
+    #     #Make phases of relations uniformly distributed in [-pi, pi]
+
+    #     phase_relation = relation/(self.embedding_range.item()/pi)
+
+    #     re_relation = torch.cos(phase_relation)
+    #     im_relation = torch.sin(phase_relation)
+
+    #     if mode == 'head-batch':
+    #         re_score = re_relation * re_tail + im_relation * im_tail
+    #         im_score = re_relation * im_tail - im_relation * re_tail
+    #         re_score = re_score - re_head
+    #         im_score = im_score - im_head
+
+    #         bert_re_score = re_relation * re_tail + im_relation * im_tail
+    #         bert_im_score = re_relation * im_tail - im_relation * re_tail
+    #         bert_re_score = bert_re_score - bert_re_head
+    #         bert_im_score = bert_im_score - bert_im_head
+    #     else:
+    #         re_score = re_head * re_relation - im_head * im_relation
+    #         im_score = re_head * im_relation + im_head * re_relation
+    #         re_score = re_score - re_tail
+    #         im_score = im_score - im_tail
+
+    #         bert_re_score = re_head * re_relation - im_head * im_relation
+    #         bert_im_score = re_head * im_relation + im_head * re_relation
+    #         bert_re_score = bert_re_score - bert_re_tail
+    #         bert_im_score = bert_re_score - bert_im_tail
             
 
         score = torch.stack([re_score, im_score], dim = 0)
@@ -458,6 +500,10 @@ class KGEModel(nn.Module):
 
         score = self.gamma.item() - score.sum(dim = 2) * self.modulus
         return score
+    
+
+    def custom_model(self, head, relation, tail, bert_head, bert_tail, mode):
+        if mode
     
 
     @staticmethod
@@ -640,3 +686,133 @@ class KGEModel(nn.Module):
                 metrics[metric] = sum([log[metric] for log in logs])/len(logs)
 
         return metrics
+
+
+class Rotate3D(KGEModel):
+    def __init__(self, num_entity, num_relation, hidden_dim, gamma, p_norm):
+        super().__init__()
+        self.num_entity = num_entity
+        self.num_relation = num_relation
+        self.hidden_dim = hidden_dim
+        self.epsilon = 2.0
+        self.p = p_norm
+
+        self.gamma = nn.Parameter(
+            torch.Tensor([gamma]),
+            requires_grad=False
+        )
+
+        self.embedding_range = nn.Parameter(
+            torch.Tensor([(self.gamma.item() + self.epsilon) / hidden_dim]),
+            requires_grad=False
+        )
+
+        self.entity_embedding = nn.Parameter(torch.zeros(num_entity, hidden_dim * 3))
+        nn.init.uniform_(
+            tensor=self.entity_embedding,
+            a=-self.embedding_range.item(),
+            b=self.embedding_range.item()
+        )
+
+        self.relation_embedding = nn.Parameter(torch.zeros(num_relation, hidden_dim * 4))
+        nn.init.uniform_(
+            tensor=self.relation_embedding,
+            a=-self.embedding_range.item(),
+            b=self.embedding_range.item()
+        )
+
+        # Initialize bias to 1
+        nn.init.ones_(
+            tensor=self.relation_embedding[:, 3*hidden_dim:4*hidden_dim]
+        )
+
+        self.pi = 3.14159262358979323846
+
+    def func(self, head, rel, tail, batch_type):
+        head_i, head_j, head_k = torch.chunk(head, 3, dim=2)
+        beta_1, beta_2, theta, bias = torch.chunk(rel, 4, dim=2)
+        tail_i, tail_j, tail_k = torch.chunk(tail, 3, dim=2)
+
+        bias = torch.abs(bias)
+
+        # Make phases of relations uniformly distributed in [-pi, pi]
+        beta_1 = beta_1 / (self.embedding_range.item() / self.pi)
+        beta_2 = beta_2 / (self.embedding_range.item() / self.pi)
+        theta = theta / (self.embedding_range.item() / self.pi)
+        cos_theta = torch.cos(theta)
+        sin_theta = torch.sin(theta)
+
+        # Obtain representation of the rotation axis
+        rel_i = torch.cos(beta_1)
+        rel_j = torch.sin(beta_1)*torch.cos(beta_2)
+        rel_k = torch.sin(beta_1)*torch.sin(beta_2)
+
+        C = rel_i*head_i + rel_j*head_j + rel_k*head_k
+        C = C*(1-cos_theta)
+
+        # Rotate the head entity
+        new_head_i = head_i*cos_theta + C*rel_i + sin_theta*(rel_j*head_k-head_j*rel_k)
+        new_head_j = head_j*cos_theta + C*rel_j - sin_theta*(rel_i*head_k-head_i*rel_k)
+        new_head_k = head_k*cos_theta + C*rel_k + sin_theta*(rel_i*head_j-head_i*rel_j)
+
+        score_i = new_head_i*bias - tail_i
+        score_j = new_head_j*bias - tail_j
+        score_k = new_head_k*bias - tail_k
+
+        score = torch.stack([score_i, score_j, score_k], dim=0)
+        score = score.norm(dim=0, p=self.p)
+        score = self.gamma.item() - score.sum(dim=2)
+        return score
+    
+class RotatE(KGEModel):
+    def __init__(self, num_entity, num_relation, hidden_dim, gamma, p_norm):
+        super().__init__()
+        self.num_entity = num_entity
+        self.num_relation = num_relation
+        self.hidden_dim = hidden_dim
+        self.epsilon = 2.0
+        self.p = p_norm
+
+        self.gamma = nn.Parameter(
+            torch.Tensor([gamma]),
+            requires_grad=False
+        )
+
+        self.embedding_range = nn.Parameter(
+            torch.Tensor([(self.gamma.item() + self.epsilon) / hidden_dim]),
+            requires_grad=False
+        )
+
+        self.entity_embedding = nn.Parameter(torch.zeros(num_entity, hidden_dim * 2))
+        nn.init.uniform_(
+            tensor=self.entity_embedding,
+            a=-self.embedding_range.item(),
+            b=self.embedding_range.item()
+        )
+
+        self.relation_embedding = nn.Parameter(torch.zeros(num_relation, hidden_dim))
+        nn.init.uniform_(
+            tensor=self.relation_embedding,
+            a=-self.embedding_range.item(),
+            b=self.embedding_range.item()
+        )
+
+        self.pi = 3.14159262358979323846
+
+    def func(self, head, rel, tail, batch_type):
+        re_head, im_head = torch.chunk(head, 2, dim=2)
+        re_tail, im_tail = torch.chunk(tail, 2, dim=2)
+
+        # Make phases of relations uniformly distributed in [-pi, pi]
+        phase_relation = rel/(self.embedding_range.item()/self.pi)
+
+        re_relation = torch.cos(phase_relation)
+        im_relation = torch.sin(phase_relation)
+
+        re_score = re_head * re_relation - im_head * im_relation - re_tail
+        im_score = re_head * im_relation + im_head * re_relation - im_tail
+
+        score = torch.stack([re_score, im_score], dim=0)
+        score = score.norm(dim=0, p=self.p)
+        score = self.gamma.item() - score.sum(dim=2)
+        return score

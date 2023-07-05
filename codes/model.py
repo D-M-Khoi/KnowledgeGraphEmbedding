@@ -432,13 +432,17 @@ class KGEModel(nn.Module):
         pi = 3.14159262358979323846
         
         #Make phases of entities and relations uniformly distributed in [-pi, pi]
-
+        
+        cp_bert_head = bert_head.detach().clone()
+        cp_bert_tail = bert_tail.detach().clone()
+        cp_bert_head.require_grads=False
+        cp_bert_tail.require_grads=False
         phase_head = head/(self.embedding_range.item()/pi)
         phase_relation = relation/(self.embedding_range.item()/pi)
         phase_tail = tail/(self.embedding_range.item()/pi)
 
-        phase_bert_head = bert_head/(self.embedding_range.item()/pi)
-        phase_bert_tail = bert_tail/(self.embedding_range.item()/pi)
+        phase_bert_head = cp_bert_head/(self.embedding_range.item()/pi)
+        phase_bert_tail = cp_bert_tail/(self.embedding_range.item()/pi)
 
         if mode == 'head-batch':
             score = phase_head + (phase_relation - phase_tail)

@@ -379,7 +379,7 @@ class KGEModel(nn.Module):
         if mode == 'head-batch':
             re_new_head = re_relation * re_tail + im_relation * im_tail
             im_new_head = re_relation * im_tail - im_relation * re_tail
-            re_score = re_new_tail * re_bhead + im_new_head * im_bhead
+            re_score = re_new_head * re_bhead + im_new_head * im_bhead
             im_score = re_new_head * im_bhead - im_new_head * re_bhead
             re_score = re_score - re_head
             im_score = im_score - im_head

@@ -379,14 +379,14 @@ class KGEModel(nn.Module):
         if mode == 'head-batch':
             re_new_head = re_relation * re_tail + im_relation * im_tail
             im_new_head = re_relation * im_tail - im_relation * re_tail
-            re_score = re_new_tail * re_bhead + im_score * im_bhead
+            re_score = re_new_tail * re_bhead + im_new_head * im_bhead
             im_score = re_new_head * im_bhead - im_new_head * re_bhead
             re_score = re_score - re_head
             im_score = im_score - im_head
         else:
             re_new_tail = re_head * re_relation - im_head * im_relation
             im_new_tail = re_head * im_relation + im_head * re_relation
-            re_score = re_new_tail * re_btail + im_score * im_btail
+            re_score = re_new_tail * re_btail + im_new_tail * im_btail
             im_score = re_new_tail * im_btail - im_new_tail * re_btail
             re_score = re_score - re_tail
             im_score = im_score - im_tail
@@ -439,15 +439,15 @@ class KGEModel(nn.Module):
     #         bert_im_score = bert_re_score - bert_im_tail
             
 
-        score = torch.stack([re_score, im_score], dim = 0)
-        score = score.norm(dim = 0)
+        # score = torch.stack([re_score, im_score], dim = 0)
+        # score = score.norm(dim = 0)
 
-        bert_score = torch.stack([bert_re_score, bert_im_score], dim = 0)
-        bert_score = bert_score.norm(dim = 0)
+        # bert_score = torch.stack([bert_re_score, bert_im_score], dim = 0)
+        # bert_score = bert_score.norm(dim = 0)
 
-        score = (0.8*score + 0.2*bert_score)/2
-        score = self.gamma.item() - score.sum(dim = 2)
-        return score
+        # score = (0.8*score + 0.2*bert_score)/2
+        # score = self.gamma.item() - score.sum(dim = 2)
+        # return score
 
     def pRotatE(self, head, relation, tail, mode):
         pi = 3.14159262358979323846

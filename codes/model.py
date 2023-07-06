@@ -362,11 +362,13 @@ class KGEModel(nn.Module):
     def RotatEBert(self, head, relation, tail, bert_head, bert_tail, mode):
 
         pi = 3.14159265358979323846
+        cp_bert_head = bert_head.clone().detach()
+        cp_bert_tail = bert_tail.clone().detach()
         
         re_head, im_head = torch.chunk(head, 2, dim=2)
         re_tail, im_tail = torch.chunk(tail, 2, dim=2)
-        re_bhead, im_bhead = torch.chunk(bert_head, 2, dim=2)
-        re_btail, im_btail = torch.chunk(bert_tail, 2, dim=2)
+        re_bhead, im_bhead = torch.chunk(cp_bert_head, 2, dim=2)
+        re_btail, im_btail = torch.chunk(cp_bert_tail, 2, dim=2)
         
 
         #Make phases of relations uniformly distributed in [-pi, pi]

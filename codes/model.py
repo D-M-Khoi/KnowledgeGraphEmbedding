@@ -250,6 +250,9 @@ class KGEModel(nn.Module):
     def DistMultBert(self, head, relation, tail, bert_head, bert_tail, mode):
         cp_bert_head = bert_head.detach().clone()
         cp_bert_tail = bert_tail.detach().clone()
+        cp_bert_head.require_grads=False
+        cp_bert_tail.rquire_grads=False
+
         if mode == 'head-batch':
             score = head * (relation * tail)
             bert_score = cp_bert_head * (relation * tail)
@@ -261,7 +264,7 @@ class KGEModel(nn.Module):
 
         score = score.sum(dim = 2)
         bert_score = bert_score.sum(dim = 2)
-        score = (score*0.8 + bert_score*0.2)/2
+        score = (score*0.9 + bert_score*0.1)/2
         return score
 
 
@@ -291,39 +294,41 @@ class KGEModel(nn.Module):
 
         score = score.sum(dim = 2)
         return score
-    
+     
     def ComplExBert(self, head, relation, tail, bert_head, bert_tail, mode):
+        re_relation, im_relation = torch.chunk(relation, 2, dim=2)
         re_head, im_head = torch.chunk(head, 2, dim=2)
         re_tail, im_tail = torch.chunk(tail, 2, dim=2)
-        re_relation, im_relation = torch.chunk(relation, 2, dim=2)
+        cp_bert_head = bert_head.detach().clone()
+        cp_bert_tail = bert_tail.detach().clone()
+        cp_bert_head.require_grads=False
+        cp_bert_tail.require_grads=False
+        bert_re_head, bert_im_head = torch.chunk(cp_bert_head, 2, dim=2)
+        bert_re_tail, bert_im_tail = torch.chunk(cp_bert_tail, 2, dim=2)
 
 
         if mode == 'head-batch':
             re_score = re_relation * re_tail + im_relation * im_tail
             im_score = re_relation * im_tail - im_relation * re_tail
             score = re_head * re_score + im_head * im_score
+
+            re_score = re_relation * re_tail + im_relation * im_tail
+            im_score = re_relation * im_tail - im_relation * re_tail
+            score = bert_re_head * re_score + bert_im_head * im_score
         else:
             re_score = re_head * re_relation - im_head * im_relation
             im_score = re_head * im_relation + im_head * re_relation
             score = re_score * re_tail + im_score * im_tail
 
-        score = score.sum(dim = 2)
-        
-
-        if mode == 'head-batch':
-            re_head, im_head = torch.chunk(bert_head, 2, dim=2)
-            re_score = re_relation * re_tail + im_relation * im_tail
-            im_score = re_relation * im_tail - im_relation * re_tail
-            bert_score = re_head * re_score + im_head * im_score
-        else:
-            re_tail, im_tail = torch.chunk(bert_tail, 2, dim=2)
             re_score = re_head * re_relation - im_head * im_relation
             im_score = re_head * im_relation + im_head * re_relation
-            bert_score = re_score * re_tail + im_score * im_tail
+            score = re_score * bert_re_tail + im_score * bert_im_tail
+
+        score = score.sum(dim = 2)
 
         bert_score = bert_score.sum(dim = 2)
 
-        score = (score*0.8 + bert_score*0.2)/2
+        score = (score*0.9 + bert_score*0.1)/2
         return score
 
     def RotatE(self, head, relation, tail, bert_head, bert_tail, mode):
@@ -358,46 +363,6 @@ class KGEModel(nn.Module):
         score = self.gamma.item() - score.sum(dim = 2)
         return score
     
-
-    # def RotatEBert(self, head, relation, tail, bert_head, bert_tail, mode):
-
-    #     pi = 3.14159265358979323846
-    #     cp_bert_head = bert_head.clone().detach()
-    #     cp_bert_tail = bert_tail.clone().detach()
-        
-    #     re_head, im_head = torch.chunk(head, 2, dim=2)
-    #     re_tail, im_tail = torch.chunk(tail, 2, dim=2)
-    #     re_bhead, im_bhead = torch.chunk(cp_bert_head, 2, dim=2)
-    #     re_btail, im_btail = torch.chunk(cp_bert_tail, 2, dim=2)
-        
-
-    #     #Make phases of relations uniformly distributed in [-pi, pi]
-
-    #     phase_relation = relation/(self.embedding_range.item()/pi)
-
-    #     re_relation = torch.cos(phase_relation)
-    #     im_relation = torch.sin(phase_relation)
-
-    #     if mode == 'head-batch':
-    #         re_new_head = re_relation * re_tail + im_relation * im_tail
-    #         im_new_head = re_relation * im_tail - im_relation * re_tail
-    #         re_score = re_new_head * re_bhead + im_new_head * im_bhead
-    #         im_score = re_new_head * im_bhead - im_new_head * re_bhead
-    #         re_score = re_score - re_head
-    #         im_score = im_score - im_head
-    #     else:
-    #         re_new_tail = re_head * re_relation - im_head * im_relation
-    #         im_new_tail = re_head * im_relation + im_head * re_relation
-    #         re_score = re_new_tail * re_btail + im_new_tail * im_btail
-    #         im_score = re_new_tail * im_btail - im_new_tail * re_btail
-    #         re_score = re_score - re_tail
-    #         im_score = im_score - im_tail
-
-    #     score = torch.stack([re_score, im_score], dim = 0)
-    #     score = score.norm(dim = 0)
-
-    #     score = self.gamma.item() - score.sum(dim = 2)
-    #     return score
 
     def RotatEBert(self, head, relation, tail, bert_head, bert_tail, mode):
         pi = 3.14159265358979323846

@@ -314,7 +314,7 @@ class KGEModel(nn.Module):
 
             re_score = re_relation * re_tail + im_relation * im_tail
             im_score = re_relation * im_tail - im_relation * re_tail
-            score = bert_re_head * re_score + bert_im_head * im_score
+            bert_score = bert_re_head * re_score + bert_im_head * im_score
         else:
             re_score = re_head * re_relation - im_head * im_relation
             im_score = re_head * im_relation + im_head * re_relation
@@ -322,7 +322,7 @@ class KGEModel(nn.Module):
 
             re_score = re_head * re_relation - im_head * im_relation
             im_score = re_head * im_relation + im_head * re_relation
-            score = re_score * bert_re_tail + im_score * bert_im_tail
+            bert_score = re_score * bert_re_tail + im_score * bert_im_tail
 
         score = score.sum(dim = 2)
 

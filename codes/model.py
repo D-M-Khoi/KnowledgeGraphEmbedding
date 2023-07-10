@@ -202,7 +202,7 @@ class KGEModel(nn.Module):
         
         return score
     
-    def TransE(self, head, relation,bert_head, bert_tail, tail, mode):
+    def TransE(self, head, relation, tail, bert_head, bert_tail, mode):
         if mode == 'head-batch':
             score = head + (relation - tail)
         else:
@@ -215,17 +215,21 @@ class KGEModel(nn.Module):
     def TransEBert(self, head, relation, tail, bert_head, bert_tail, mode):
         cp_bert_head = bert_head.detach().clone()
         cp_bert_tail = bert_tail.detach().clone()
+        cp_bert_head.require_grads = False
+        cp_bert_tail.require_grads = False
 
         if mode == 'head-batch':
             score = head + (relation - tail)    
             bert_score = cp_bert_head + (relation - tail)
-            score = (score + bert_score)/2
         else:
             score = (head + relation) - tail
             bert_score = (head + relation) - cp_bert_tail
-            score = (score + bert_score)/2
 
         score = self.gamma.item() - torch.norm(score, p=1, dim=2)
+        bert_score = self.gamma.item() - torch.norm(bert_score, p=1, dim=2)
+
+        score = (score*0.9 + bert_score*0.1)/2
+
         return score
     
     
@@ -250,6 +254,9 @@ class KGEModel(nn.Module):
     def DistMultBert(self, head, relation, tail, bert_head, bert_tail, mode):
         cp_bert_head = bert_head.detach().clone()
         cp_bert_tail = bert_tail.detach().clone()
+        cp_bert_head.require_grads=False
+        cp_bert_tail.rquire_grads=False
+
         if mode == 'head-batch':
             score = head * (relation * tail)
             bert_score = cp_bert_head * (relation * tail)
@@ -261,7 +268,7 @@ class KGEModel(nn.Module):
 
         score = score.sum(dim = 2)
         bert_score = bert_score.sum(dim = 2)
-        score = (score*0.8 + bert_score*0.2)/2
+        score = (score*0.9 + bert_score*0.1)/2
         return score
 
 
@@ -291,39 +298,41 @@ class KGEModel(nn.Module):
 
         score = score.sum(dim = 2)
         return score
-    
+     
     def ComplExBert(self, head, relation, tail, bert_head, bert_tail, mode):
+        re_relation, im_relation = torch.chunk(relation, 2, dim=2)
         re_head, im_head = torch.chunk(head, 2, dim=2)
         re_tail, im_tail = torch.chunk(tail, 2, dim=2)
-        re_relation, im_relation = torch.chunk(relation, 2, dim=2)
+        cp_bert_head = bert_head.detach().clone()
+        cp_bert_tail = bert_tail.detach().clone()
+        cp_bert_head.require_grads=False
+        cp_bert_tail.require_grads=False
+        bert_re_head, bert_im_head = torch.chunk(cp_bert_head, 2, dim=2)
+        bert_re_tail, bert_im_tail = torch.chunk(cp_bert_tail, 2, dim=2)
 
 
         if mode == 'head-batch':
             re_score = re_relation * re_tail + im_relation * im_tail
             im_score = re_relation * im_tail - im_relation * re_tail
             score = re_head * re_score + im_head * im_score
+
+            re_score = re_relation * re_tail + im_relation * im_tail
+            im_score = re_relation * im_tail - im_relation * re_tail
+            bert_score = bert_re_head * re_score + bert_im_head * im_score
         else:
             re_score = re_head * re_relation - im_head * im_relation
             im_score = re_head * im_relation + im_head * re_relation
             score = re_score * re_tail + im_score * im_tail
 
-        score = score.sum(dim = 2)
-        
-
-        if mode == 'head-batch':
-            re_head, im_head = torch.chunk(bert_head, 2, dim=2)
-            re_score = re_relation * re_tail + im_relation * im_tail
-            im_score = re_relation * im_tail - im_relation * re_tail
-            bert_score = re_head * re_score + im_head * im_score
-        else:
-            re_tail, im_tail = torch.chunk(bert_tail, 2, dim=2)
             re_score = re_head * re_relation - im_head * im_relation
             im_score = re_head * im_relation + im_head * re_relation
-            bert_score = re_score * re_tail + im_score * im_tail
+            bert_score = re_score * bert_re_tail + im_score * bert_im_tail
+
+        score = score.sum(dim = 2)
 
         bert_score = bert_score.sum(dim = 2)
 
-        score = (score*0.8 + bert_score*0.2)/2
+        score = (score*0.9 + bert_score*0.1)/2
         return score
 
     def RotatE(self, head, relation, tail, bert_head, bert_tail, mode):

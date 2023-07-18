@@ -45,6 +45,8 @@ def parse_args(args=None):
     parser.add_argument('-n', '--negative_sample_size', default=128, type=int)
     parser.add_argument('-d', '--hidden_dim', default=500, type=int)
     parser.add_argument('-g', '--gamma', default=12.0, type=float)
+    parser.add_argument('--alpha', default=0.9, type=float)
+    parser.add_argument('--beta', default=0.1, type=float)
     parser.add_argument('-adv', '--negative_adversarial_sampling', action='store_true')
     parser.add_argument('-a', '--adversarial_temperature', default=1.0, type=float)
     parser.add_argument('-b', '--batch_size', default=1024, type=int)
@@ -225,7 +227,9 @@ def main(args):
         hidden_dim=args.hidden_dim,
         gamma=args.gamma,
         double_entity_embedding=args.double_entity_embedding,
-        double_relation_embedding=args.double_relation_embedding
+        double_relation_embedding=args.double_relation_embedding,
+        alpha=args.alpha,
+        beta=args.beta,
     )
     
     logging.info('Model Parameter Configuration:')

@@ -292,6 +292,9 @@ def main(args):
     logging.info('negative_adversarial_sampling = %d' % args.negative_adversarial_sampling)
     logging.info('hidden_dim = %d' % args.hidden_dim)
     logging.info('gamma = %f' % args.gamma)
+    logging.info('alpha = %f' % args.alpha)
+    logging.info('beta = %f' % args.beta)
+
     logging.info('negative_adversarial_sampling = %s' % str(args.negative_adversarial_sampling))
     if args.negative_adversarial_sampling:
         logging.info('adversarial_temperature = %f' % args.adversarial_temperature)

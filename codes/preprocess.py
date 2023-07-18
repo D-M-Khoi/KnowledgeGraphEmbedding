@@ -362,18 +362,15 @@ def predict_candidate(example):
 
 
 if __name__ == '__main__':
-    # if platform.system() == 'Windows':
-    #     mp.set_start_method('spawn')
-    # elif platform.system() == 'Linux':
-        # mp.set_start_method('fork')
-    # else:
-        # raise OSError('Unsupported architecture')
     try:
-        mp.set_start_method('spawn', force=True)
+        if platform.system() == 'Windows':
+            mp.set_start_method('spawn')
+        elif platform.system() == 'Linux':
+            mp.set_start_method('fork')
+        else:
+            raise OSError('Unsupported architecture')
     except RuntimeError:
         pass
-    print(args.train_path)
-    print(args.test_path)
-    print(args.valid_path)
+    
 
     main()

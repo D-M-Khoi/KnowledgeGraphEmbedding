@@ -6,9 +6,9 @@ import os
 
 
 if __name__ == '__main__':
-    filepath = '../results/model_logs'
-    imgpath = '../results/images'
-    metricspath = '../results/metrics'
+    filepath = './results/model_logs'
+    imgpath = './results/images'
+    metricspath = './results/metrics'
     file_list = os.listdir(filepath)
     model_logs = {}
     for file in file_list:

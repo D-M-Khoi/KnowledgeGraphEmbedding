@@ -134,8 +134,13 @@ def set_logger(args):
     Write logs to checkpoint and console
     '''
 
+    # if args.do_train:
+    #     log_file = os.path.join(args.save_path or args.init_checkpoint, 'train.log')
+    # else:
+    #     log_file = os.path.join(args.save_path or args.init_checkpoint, 'test.log')
+
     if args.do_train:
-        log_file = os.path.join(args.save_path or args.init_checkpoint, 'train.log')
+        log_file = os.path.join('./results/model_logs', f'{args.model}.txt')
     else:
         log_file = os.path.join(args.save_path or args.init_checkpoint, 'test.log')
 

@@ -1,4 +1,4 @@
-# CKKGEm: Context knoledge for Knowledge Graph Embedding models
+# CKKGEm: Context Knowledge for Knowledge Graph Embedding models
 ## Usage
 ### Prepare datasets
 - Command: 
@@ -19,3 +19,5 @@ bash run.sh [Options]
 ```
 python codes/results.py
 ```
+## Notes
+According to the original project, `best_config.sh` contains all the commands with the best arguments for each models. Therefore, we use those commands to obtain the results for our models which are based on the original models. 

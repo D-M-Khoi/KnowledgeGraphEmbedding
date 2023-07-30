@@ -11,7 +11,7 @@ WORKERS=$2
 # fi
 
 
-python3 -u preprocess.py \
+python3 -u codes/preprocess.py \
 --task "${TASK}" \
 --train-path "../data/${TASK}/train.txt" \
 --valid-path "../data/${TASK}/valid.txt" \

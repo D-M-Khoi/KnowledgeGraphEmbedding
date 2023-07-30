@@ -140,7 +140,7 @@ def set_logger(args):
     #     log_file = os.path.join(args.save_path or args.init_checkpoint, 'test.log')
 
     if args.do_train:
-        log_file = os.path.join('./results/model_logs', f'{args.model}.txt')
+        log_file = os.path.join('../results/model_logs', f'{args.model}.txt')
     else:
         log_file = os.path.join(args.save_path or args.init_checkpoint, 'test.log')
 

@@ -139,7 +139,7 @@ def set_logger(args):
     # else:
     #     log_file = os.path.join(args.save_path or args.init_checkpoint, 'test.log')
 
-    log_file = os.path.join('../results/model_logs', f'{args.model}.txt')
+    log_file = '../results/model_logs'/f'{args.model}.txt'
 
     logging.basicConfig(
         format='%(asctime)s %(levelname)-8s %(message)s',

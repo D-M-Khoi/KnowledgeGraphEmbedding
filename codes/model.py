@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader
 from dataloader import TestDataset
 
 class KGEModel(nn.Module):
-    def __init__(self, model_name, nentity, nrelation, hidden_dim, gamma, alpha, beta, 
+    def __init__(self, model_name, nentity, nrelation, hidden_dim, gamma,delta, 
                  double_entity_embedding=False, double_relation_embedding=False):
         super(KGEModel, self).__init__()
         self.model_name = model_name
@@ -32,8 +32,7 @@ class KGEModel(nn.Module):
             torch.Tensor([gamma]), 
             requires_grad=False
         )
-        self.alpha = alpha
-        self.beta = beta
+        self.delta = delta
         
         self.embedding_range = nn.Parameter(
             torch.Tensor([(self.gamma.item() + self.epsilon) / hidden_dim]), 
@@ -230,7 +229,7 @@ class KGEModel(nn.Module):
         score = self.gamma.item() - torch.norm(score, p=1, dim=2)
         bert_score = self.gamma.item() - torch.norm(bert_score, p=1, dim=2)
 
-        score = (score*self.alpha + bert_score*self.beta)/2
+        score = (score*self.delta + bert_score*(1 - self.delta))/2
 
         return score
     
@@ -270,7 +269,7 @@ class KGEModel(nn.Module):
 
         score = score.sum(dim = 2)
         bert_score = bert_score.sum(dim = 2)
-        score = (score*self.alpha + bert_score*self.beta)/2
+        score = (score*self.delta + bert_score*(1 - self.delta))/2
         return score
 
 
@@ -334,7 +333,7 @@ class KGEModel(nn.Module):
 
         bert_score = bert_score.sum(dim = 2)
 
-        score = (score*self.alpha + bert_score*self.beta)/2
+        score = (score*self.delta + bert_score*(1-self.delta))/2
         return score
 
     def RotatE(self, head, relation, tail, bert_head, bert_tail, mode):
@@ -418,7 +417,7 @@ class KGEModel(nn.Module):
         bert_score = torch.stack([bert_re_score, bert_im_score], dim = 0)
         bert_score = bert_score.norm(dim = 0)
 
-        score = (self.alpha*score + self.beta*bert_score)/2
+        score = (self.delta*score + (1 - self.delta)*bert_score)/2
         score = self.gamma.item() - score.sum(dim = 2)
         return score
 

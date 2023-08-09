@@ -25,8 +25,7 @@ ADVT=${10}
 LEARNING_RATE=${11}
 MAX_STEPS=${12}
 TEST_BATCH_SIZE=${13}
-ALPHA=${14}
-BETA=${15}
+DELTA=${14}
 if [ $MODE == "train" ]
 then
 
@@ -40,10 +39,10 @@ CUDA_VISIBLE_DEVICES=$GPU_DEVICE python -u $CODE_PATH/run.py --do_train \
     --model $MODEL \
     -n $NEGATIVE_SAMPLE_SIZE -b $BATCH_SIZE -d $HIDDEN_DIM \
     -g $GAMMA -a $ADVT -adv \
-    --alpha $ALPHA --beta $BETA \
+    --delta $DELTA \
     -lr $LEARNING_RATE --max_steps $MAX_STEPS \
     -save $SAVE --test_batch_size $TEST_BATCH_SIZE \
-    ${16} ${17} ${18} ${19} ${20} ${21} ${22} 
+    ${15} ${16} ${17} ${18} ${19} ${20} ${21} 
 
 elif [ $MODE == "valid" ]
 then

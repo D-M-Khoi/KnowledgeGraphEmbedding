@@ -350,8 +350,13 @@ def predict_candidate(example):
     global id2ent
     all_ents = [i[1] for i in id2ent.values()]
     ent2id = {i[1]: i[0] for i in id2ent.values()}
-    masked_string = example['head'] + ' ' + id2ent[example['head_id']][2] + ' ' + example['relation'] + ' ' + '***mask***'
+    masked_string = example['head'] + ' ' + id2ent[example['head_id']][2] + \
+        ' ' + example['relation'] + ' ' + '***mask***'
+    print(masked_string)
+    print()
     t_candidates = FB.rank(masked_string, options=all_ents)
+    print(masked_string)
+    print()
     masked_string = '***mask***' + ' ' + example['relation'] + example['tail'] + ' ' + id2ent[example['tail_id']][2]
     h_candidates = FB.rank(masked_string, options=all_ents)
     example['bert_t_id'] = ent2id[t_candidates[0]]
@@ -362,15 +367,15 @@ def predict_candidate(example):
 
 
 if __name__ == '__main__':
-    try:
-        if platform.system() == 'Windows':
-            mp.set_start_method('spawn')
-        elif platform.system() == 'Linux':
-            mp.set_start_method('fork')
-        else:
-            raise OSError('Unsupported architecture')
-    except RuntimeError:
-        pass
-    
+    # try:
+    #     if platform.system() == 'Windows':
+    #         mp.set_start_method('spawn')
+    #     elif platform.system() == 'Linux':
+    #         mp.set_start_method('fork')
+    #     else:
+    #         raise OSError('Unsupported architecture')
+    # except RuntimeError:
+    #     pass
+    mp.set_start_method('spawn')
 
     main()

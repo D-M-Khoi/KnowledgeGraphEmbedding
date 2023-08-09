@@ -10,6 +10,7 @@ if __name__ == '__main__':
     imgpath = './results/images'
     metricspath = './results/metrics'
     file_list = os.listdir(filepath)
+    file_list = list(filter(lambda x: x.endswith('.txt'), file_list))
     model_logs = {}
     for file in file_list:
         with open(os.path.join(filepath, file)) as f:
@@ -43,7 +44,7 @@ if __name__ == '__main__':
             tmp['HITS@10'] = float(valid_logs_raw[i+4].split(': ')[1])
             valid_logs.append(tmp)
 
-        test_logs_raw = filter(lambda x: 'Test' in x and 'Eval' not in x, model_logs['ComplEx'])
+        test_logs_raw = filter(lambda x: 'Test' in x and 'Eval' not in x, model_logs[model_name])
         test_logs_raw = list(map(lambda x: x.split(': ')[1].strip() , test_logs_raw))
         test_logs = []
         for i in range(0, len(test_logs_raw),5):

@@ -45,8 +45,7 @@ def parse_args(args=None):
     parser.add_argument('-n', '--negative_sample_size', default=128, type=int)
     parser.add_argument('-d', '--hidden_dim', default=500, type=int)
     parser.add_argument('-g', '--gamma', default=12.0, type=float)
-    parser.add_argument('--alpha', default=0.9, type=float)
-    parser.add_argument('--beta', default=0.1, type=float)
+    parser.add_argument('--delta', default=0.9, type=float)
     parser.add_argument('-adv', '--negative_adversarial_sampling', action='store_true')
     parser.add_argument('-a', '--adversarial_temperature', default=1.0, type=float)
     parser.add_argument('-b', '--batch_size', default=1024, type=int)
@@ -139,7 +138,7 @@ def set_logger(args):
     # else:
     #     log_file = os.path.join(args.save_path or args.init_checkpoint, 'test.log')
 
-    log_file = '../results/model_logs/' + f'{args.model}.txt'
+    log_file = './results/model_logs/' + f'{args.model}.txt'
 
     logging.basicConfig(
         format='%(asctime)s %(levelname)-8s %(message)s',
@@ -230,8 +229,7 @@ def main(args):
         gamma=args.gamma,
         double_entity_embedding=args.double_entity_embedding,
         double_relation_embedding=args.double_relation_embedding,
-        alpha=args.alpha,
-        beta=args.beta,
+        delta=args.delta
     )
     
     logging.info('Model Parameter Configuration:')
@@ -294,8 +292,7 @@ def main(args):
     logging.info('negative_adversarial_sampling = %d' % args.negative_adversarial_sampling)
     logging.info('hidden_dim = %d' % args.hidden_dim)
     logging.info('gamma = %f' % args.gamma)
-    logging.info('alpha = %f' % args.alpha)
-    logging.info('beta = %f' % args.beta)
+    logging.info('delta = %f' % args.delta)
 
     logging.info('negative_adversarial_sampling = %s' % str(args.negative_adversarial_sampling))
     if args.negative_adversarial_sampling:

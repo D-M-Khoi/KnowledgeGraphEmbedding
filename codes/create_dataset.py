@@ -10,6 +10,7 @@ parser.add_argument('--dataset', type=str, default='wn18rr')
 
 def prepare_data(path: str):
     file_list = os.listdir(path)
+    print(file_list)
     jsonfiles = filter(lambda x: x.endswith('.txt.json'), file_list)
     if 'new_data' in file_list:
         new_path = os.path.join(path, 'new_data')
@@ -36,6 +37,6 @@ if __name__=='__main__':
     if dataset not in ['wn18rr', 'fb15k237']:
         raise Exception('Dataset not supported. Supported datasets are: wn18rr, fb15k237')
 
-    path = f'../data/{dataset}'
+    path = f'./data/{dataset}'
 
     prepare_data(path)
